@@ -1,0 +1,62 @@
+html, body {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 14px;
+}
+
+
+#todo-app {
+    text-align: center;
+    width: 400px;
+    margin: auto;
+}
+
+
+.todo-title{
+    font-size: 2rem;
+    font-weight: 300;
+}
+
+
+.todo-list{
+    margin: 10px 0;
+    border: black 1px solid;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.todo-item {
+    text-align: left;
+    margin-top: 20px;
+    border: #ff6348 1px solid;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+.todo-item.done{
+    opacity: .5;
+    border-color: blanchedalmond;
+}
+
+.todo-item p {
+    display: inline;
+}
+.todo-item button {
+    float: right;
+}
+
+.behavior {
+    margin-top: 10px;
+}
+
+.remove-all-btn{
+    float: right;
+    border: none;
+    text-decoration: underline;
+    font-style: italic;
+    color: burlywood ;
+    opacity: 0;
+}
+
+.remove-all-btn.active{
+    opacity: 1;
+}
