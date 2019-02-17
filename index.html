@@ -1,45 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr"
+        crossorigin="anonymous">
     <link rel="stylesheet" href="style.css">
     <title>Document</title>
 </head>
+
 <body>
     <section id="todo-app">
         <h1 class="todo-title">{{title}}</h1>
 
         <!-- input -->
-        <input type="text" v-model="newTodo" v-on:keyup.enter="addTodo">
+        <input type="text" v-model="newTodo" v-on:keyup.enter="addTodo(newTodo)">
 
         <!-- list -->
         <article class="todo-list" v-show="todos.length">
-            <Todo
-                v-for="todo in todos" 
-                v-bind:key="todo.id" 
-                v-bind:todo="todo" 
-                v-bind:filtertype="filtertype"
-                v-on:on-delete="deleteTodo"
-                v-on:on-toggle-status="toggleTodo"
-            ></Todo>
+            <!-- undo and redo -->
+            <div class="behaviour-2">
+                <!-- undo -->
+                <button v-on:click="undo">
+                    <i class="fa fa-arrow-left"></i>
+                    <span>
+                        undo
+                    </span>
+                </button>
+                <!-- end undo -->
+
+                <!-- redo -->
+                <button>
+                    <span>
+                        redo
+                    </span>
+                    <i class="fa fa-arrow-right"></i>
+                </button>
+                <!-- end redo -->
+            </div>
+            <!-- end undo and redo -->
+
+
+            <!-- Todo -->
+            <Todo v-for="todo in todos" v-bind:key="todo.id" v-bind:todo="todo" v-bind:filtertype="filtertype"
+                v-on:on-delete="deleteTodo" v-on:on-toggle-status="toggleTodo"></Todo>
+
             <!-- filter -->
-            <div class="behavior">
+            <div class="behaviour">
                 <button v-on:click="filtertype = 'all'">All</button>
                 <button v-on:click="filtertype = 'doned'">Doned</button>
                 <button v-on:click="filtertype = 'active'">Active</button>
-                <button class="remove-all-btn"v-on:click="deleteDoneTodos" v-bind:class="{active : showDeleteAllBtn}">Remove done</button>
+                <button class="remove-all-btn" v-on:click="deleteDoneTodos" v-bind:class="{active : showDeleteAllBtn}">Remove
+                    done</button>
             </div>
+            <!-- end filter -->
+
+
         </article>
-        <table>
-            <Todo></Todo>
-        </table>
 
 
     </section>
-    
+
     <script src="main.js"></script>
 </body>
+
 </html>
