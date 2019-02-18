@@ -85,10 +85,16 @@ const app = new Vue({
     data: {
         title: 'To Do App Vuejs',
         todos: Array(...seedTodos),
-        newTodo: null,
+        newTodoBind: null,
         filtertype: 'all',
-        tasks: [],
+        undoTask: [],
         redoTask: [],
+        isUndoOrRedo: false,
+        currentTaskIndex: -1,
+        lastTaskIndex: -1,
+        lastAction: null,
+        isNoMoreUndoFunc: true,
+        isNoMoreRedoFunc: true,
     },
 
 
@@ -99,20 +105,42 @@ const app = new Vue({
             // verify the new todo
             if (typeof rawNewTodo == 'string') {
 
-                const newTodo = rawNewTodo.trim();
+                const newTodoContent = rawNewTodo.trim();
                 console.log('addTodo', rawNewTodo);
                 // let newTodo = 'tested';
-                if (newTodo) {
+                let newTodo = {};
+                if (newTodoContent) {
                     // add new todo
                     let fakeId = this.todos.length + 200;
-                    this.todos.push({
+                     newTodo = {
                         id: fakeId,
-                        content: newTodo,
+                        content: newTodoContent,
                         isDone: false
-                    });
+                    };
+                    this.todos.push(newTodo);
                 }
                 // clear the input
-                this.newTodo = '';
+                this.newTodoBind = '';
+
+                // TODO: add to task tracking
+
+                let positionOfNewTodo = this.todos.length-1;
+                console.log('position of new todo', positionOfNewTodo);
+
+                let undoTask = {
+                    action: this.undo_addTodo.bind(this),
+                    params: [newTodo.id]
+                };
+
+                let currentTask = {
+                    action: this.addTodo.bind(this),
+                    params: [newTodo, positionOfNewTodo]
+                }
+
+                this.addToTaskTracking(undoTask, currentTask);
+
+
+                // TODO-end
 
             } else if (typeof rawNewTodo == 'object' && Number.isInteger(index)) {
 
@@ -120,7 +148,6 @@ const app = new Vue({
                 this.todos.splice(index, 0, rawNewTodo);
 
             } else {
-
                 throw ('error in addTodo');
             }
         },
@@ -130,63 +157,191 @@ const app = new Vue({
 
             let deletedId = $event;
             this.todos = this.todos.filter((todo, index) => {
-                if (todo.id === deletedId) {
+                if (todo.id !== deletedId) {
+                    // for those todo which not match we return them
+                    return true
+                } else {
                     // this is the todo need to delete
                     // and not return this todo
-                    // TODO: 
+                    // TODO:
                     // add the action into undoTask
                     let undoTask = {
-                        action: this.addTodo.bind(this),
+                        action: this.undo_deleteTodo.bind(this),
                         params: [todo, index],
                     }
                     let currentTask = {
                         action: this.deleteTodo.bind(this),
-                        params: [$event]
+                        params: [$event],
                     }
-                    // TODO
-                    // this.tasks.push(undoTask);
-                    // this.tasks.push(currentTask);
 
-                } else {
-                    // for those todo which not match we return them
-                    return true;
+                    this.addToTaskTracking(undoTask, currentTask);
+
                 }
             });
         },
 
-        deleteDoneTodos: function () {
-            this.todos = this.todos.filter(todo => {
+        deleteDoneTodos: function (todos) {
+            // deletetodo = {t odo , index }
+            let deletedTodos = [];
+            this.todos = todos.filter((todo, index) => {
                 // keep those todos that have not done yet
-                return todo.isDone === false;
+                if(todo.isDone === false){
+                    return true;
+                }else {
+                    // those item will be remove
+                    // TODO store those item before they re removed
+                    deletedTodos.push({
+                        todo: todo,
+                        index: index
+                    });
+                    return false;
+                }
+
             });
+
+
+            // TODO: add to task tracking
+            let undoTask = {
+                action: this.undo_deletedDoneTodos.bind(this),
+                params: [deletedTodos]
+            };
+
+            let currentTask = {
+                action: this.deleteDoneTodos.bind(this),
+                params: [todos]
+            }
+            this.addToTaskTracking(undoTask, currentTask);
+
         },
         // change status
         toggleTodo: function (updatedId) {
             this.todos = this.todos.map(todo => {
                 if (todo.id === updatedId) {
                     todo.isDone = !todo.isDone;
+                    // TODO: add the task tracking
+
+                    let undoTask = {
+                        action: this.undo_toggleTodo.bind(this),
+                        params: [updatedId]
+                    };
+
+                    let currentTask = {
+                        action: this.toggleTodo.bind(this),
+                        params: [updatedId]
+                    }
+                    this.addToTaskTracking(undoTask, currentTask);
+
                 }
                 return todo;
             });
         },
 
 
-        // undo process
-        undo: function() {
-            // check the undotask
-            if(this.tasks && this.tasks.length !== 0){
-                // go to previous task
-                const task = this.undoTask.pop();
-                if(task && typeof task === 'object'){
-                    // excecute the last action
-                    task.action.apply(this, task.params);
+
+        addToTaskTracking: function(undoTask, currentTask){
+            if(this.isUndoOrRedo === false) {
+                if(this.isNoMoreRedoFunc === false){
+                    // mean: the task is not up to date
+                    // TODO: remove all the state in the top
+                    // this.currentTaskIndex
+                    console.log('hey remove all', this.undoTask);
+                    let currPos = this.currentTaskIndex;
+                    this.undoTask.splice(currPos + 1,this.topTaskIndex) ; // remove the action later than the current action
+                    this.redoTask.splice(currPos + 1,this.topTaskIndex) ; // remove the action later than the current action
                 }
+
+                this.undoTask.push(undoTask);
+                this.redoTask.push(currentTask);
+                // update the current pointer
+                this.currentTaskIndex = this.topTaskIndex;
+
+                // update flags
+                this.isNoMoreUndoFunc = false;
+                this.isNoMoreRedoFunc = false;
             }
         },
 
-        redo_deleteTodo(todo, index) {
-            addTodo(todo, index);
+
+
+        // undo functions
+        undo_deleteTodo: function (todo, index) {
+            this.addTodo.call(this,todo, index);
         },
+
+        undo_addTodo: function (todoId){
+            console.log('todoId', todoId);
+            this.deleteTodo.call(this, todoId);
+        },
+        undo_deletedDoneTodos: function (restoredTodos) {
+
+            //note : objTodo = {todo: todo, index: index}
+            let _that = this;
+            restoredTodos.forEach(objTodo => {
+                // restore all the deleted todo
+                _that.addTodo(objTodo.todo, objTodo.index);
+            })
+        },
+        undo_toggleTodo: function(updatedId) {
+            this.toggleTodo.call(this,updatedId);
+        },
+
+        // undo process
+        undo: function() {
+            // check the undotask
+            console.log('current', this.currentTaskIndex);
+            console.log('last', this.lastTaskIndex);
+
+            if(this.undoTask && this.undoTask.length !== 0 && (this.undoTask.length - 1)  >= this.currentTaskIndex){
+                // go to previous task
+                if(this.currentTaskIndex > 0 || (this.currentTaskIndex === 0 && (this.currentTaskIndex !== this.lastTaskIndex || this.lastAction !== 'undo'))){
+                    const task = this.undoTask[this.currentTaskIndex];
+                    if(task && typeof task === 'object'){
+                        console.log("call undo in here");
+                        // excecute the last action
+                        this.isUndoOrRedo = true;
+                        task.action.apply(this, task.params);
+                        this.isUndoOrRedo = false;
+                        this.lastAction = 'undo';
+                    }
+                    if (this.currentTaskIndex === 0){
+                        // set the pointer is in the bottom and no more undo function
+                        this.isNoMoreUndoFunc = true;
+                    }
+                    this.lastTaskIndex = this.currentTaskIndex;
+                    if(this.currentTaskIndex > 0) {
+                        // TODO: decrease the current until it hit the bottom
+                        this.currentTaskIndex--;
+                    }
+                }
+
+            }
+        },
+
+        redo: function(){
+            console.log('current', this.currentTaskIndex);
+            console.log('last', this.lastTaskIndex);
+            if(this.redoTask && this.redoTask.length !==0 && (this.redoTask.length -1) >= this.currentTaskIndex ){
+                if(this.currentTaskIndex < this.topTaskIndex || (this.currentTaskIndex === this.topTaskIndex && (this.currentTaskIndex !== this.lastTaskIndex || this.lastAction !== 'redo'))){
+                    const task = this.redoTask[this.currentTaskIndex];
+                    if(task && typeof task === 'object'){
+                        this.isUndoOrRedo = true;
+                        task.action.apply(this, task.params);
+                        this.isUndoOrRedo = false;
+                        this.lastAction = 'redo';
+                    }
+                    if (this.currentTaskIndex === this.topTaskIndex){
+                        // set the pointer is in the top and no more redo function
+                        this.isNoMoreRedoFunc = true;
+                    }
+                    this.lastTaskIndex = this.currentTaskIndex;
+                    if(this.currentTaskIndex < this.topTaskIndex){
+                        // TODO: increase the current until it hit the top
+                        this.currentTaskIndex++;
+                    }
+                }
+
+            }
+        }
 
     },
 
@@ -212,9 +367,9 @@ const app = new Vue({
         showDeleteAllBtn: function () {
             return (this.doneTodos.length !== 0) ? true : false;
         },
-        currentTaskIndex: function () {
+        topTaskIndex: function () {
             // observer the tasks length
-            return this.tasks.length -1;
+            return this.undoTask.length -1;
         }
     },
 
@@ -222,6 +377,19 @@ const app = new Vue({
     watch: {
         undoTask: function(){
             console.log('undoTask updated', this.undoTask);
+        },
+        isNoMoreRedoFunc: function(){
+            // check whether the app is uptodate
+            if(this.isNoMoreRedoFunc){
+
+            }
+        },
+        isNoMoreUndoFunc: function(){
+
+            console.log('Undo up to date', this.isNoMoreUndoFunc);
         }
     }
 });
+
+
+ // TODO: error when update the state in the redo undo
